@@ -1,0 +1,237 @@
+<!doctype html>
+<html>
+<head>
+	<title>WoTC Tracker</title>
+	<script src="https://www.chartjs.org/dist/2.9.4/Chart.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/js/main.js"></script>
+	<style>
+	canvas{
+		-moz-user-select: none;
+		-webkit-user-select: none;
+		-ms-user-select: none;
+	}
+	</style>
+</head>
+<body>
+	<center>
+	<input type="text" name="daterange" id="dateRange" size="23" />
+	</center>
+	<br>
+	<div>
+		<canvas id="canvas">></canvas>
+	</div>
+	<br>
+	<label for="xbox">Xbox colors:</label> <select name="xbox" id="xbox">
+		<option value="red">Red</option>
+		<option value="orange">Orange</option>
+		<option value="yellow">Yellow</option>
+		<option value="green" selected>Green</option>
+		<option value="blue">Blue</option>
+		<option value="purple">Purple</option>
+		<option value="grey">Grey</option>
+	</select>
+	<br>
+	<label for="ps">Playstation colors:</label> <select name="ps" id="ps">
+		<option value="red">Red</option>
+		<option value="orange">Orange</option>
+		<option value="yellow">Yellow</option>
+		<option value="green">Green</option>
+		<option value="blue" selected>Blue</option>
+		<option value="purple">Purple</option>
+		<option value="grey">Grey</option>
+	</select>
+	<br>
+	<br>
+	<label for="charttype">Set Chart Type:</label> <select name="charttype" id="chartType">
+		<option value="active" selected>Active Accounts</option>
+		<option value="battles">Total Battles</option>
+		<option value="min5">Minimum 5 battles</option>
+	</select>
+	<script>
+		// Manually define colors for our use
+		window.chartColors = {
+			red: 'rgb(255, 99, 132)',
+			orange: 'rgb(255, 159, 64)',
+			yellow: 'rgb(255, 205, 86)',
+			green: 'rgb(75, 192, 192)',
+			blue: 'rgb(54, 162, 235)',
+			purple: 'rgb(153, 102, 255)',
+			grey: 'rgb(201, 203, 207)'
+		};
+
+		// Monkey-patch the Date class
+		Date.prototype.addDays = function(days) {
+			var dat = new Date(this.valueOf())
+			dat.setDate(dat.getDate() + days);
+			return dat;
+		}
+
+		// Calculate inital date range
+		var now = new Date();
+		var then = new Date();
+		then.setDate(now.getDate() - 6);
+
+		window.picker = new Litepicker({
+			element: document.getElementById('dateRange'),
+			format: 'YYYY-MM-DD',
+			autoApply: true,
+			mobileFriendly: true,
+			showTooltip: true,
+			singleMode: false,
+			startDate: then.toISOString().slice(0, 10),
+			endDate: now.toISOString().slice(0, 10),
+			onSelect: updateTimeRange,
+		});
+
+		var config = {
+			type: 'line',
+			data: {
+				labels: ['Just', 'Waiting', 'For', 'The', 'Data', 'To', 'Load'],
+				datasets: [
+				{
+					label: 'Xbox',
+					fill: false,
+					backgroundColor: window.chartColors[document.getElementById('xbox').value],
+					borderColor: window.chartColors[document.getElementById('xbox').value],
+					data: [
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7
+					],
+				},
+				{
+					label: 'Playstation',
+					fill: false,
+					backgroundColor: window.chartColors[document.getElementById('ps').value],
+					borderColor: window.chartColors[document.getElementById('ps').value],
+					data: [
+						7,
+						6,
+						5,
+						4,
+						3,
+						2,
+						1
+					],
+				}]
+			},
+			options: {
+				animation: {
+					duration: 0,
+				},
+				responsive: true,
+				responsiveAnimationDuration: 0,
+				title: {
+					display: true,
+					text: 'WoTC Player Tracker'
+				},
+				tooltips: {
+					mode: 'index',
+					intersect: false,
+				},
+				hover: {
+					mode: 'nearest',
+					intersect: true,
+					animationDuration: 0,
+				},
+				scales: {
+					xAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Day'
+						},
+						ticks: {
+							minRotation: 0,
+							maxRotation: 90
+						}
+					}],
+					yAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Values'
+						}
+					}]
+				}
+			}
+		};
+
+
+		function getDates(startDate, stopDate) {
+			var dateArray = new Array();
+			var currentDate = startDate;
+			while (currentDate <= stopDate) {
+				dateArray.push(new Date (currentDate));
+				currentDate = currentDate.addDays(1);
+			}
+			return dateArray;
+		}
+
+		function datesToString(dateArray) {
+			var stringArray = new Array();
+			dateArray.forEach(element => stringArray.push(element.toISOString().slice(0, 10)));
+			return stringArray;
+		}
+
+		// Load initial data
+
+		window.onload = function() {
+			dates = datesToString(getDates(then, now));
+			config.data.labels = dates;
+			var ctx = document.getElementById('canvas').getContext('2d');
+			window.chart = new Chart(ctx, config);
+			loadData(dates);
+			window.chart.update(0);
+		};
+
+		// Additional functions and listener actions
+
+		document.getElementById('xbox').addEventListener('change', function() {
+			config.data.datasets[0].backgroundColor = window.chartColors[document.getElementById('xbox').value];
+			config.data.datasets[0].borderColor = window.chartColors[document.getElementById('xbox').value];
+			window.chart.update(0);
+		});
+
+		document.getElementById('ps').addEventListener('change', function() {
+			config.data.datasets[1].backgroundColor = window.chartColors[document.getElementById('ps').value];
+			config.data.datasets[1].borderColor = window.chartColors[document.getElementById('ps').value];
+			window.chart.update(0);
+		});
+
+		function updateTimeRange() {
+			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
+			config.data.labels = dates;
+			loadData(dates);
+			window.chart.update(0);
+		}
+
+		function loadData(dates) {
+			var xbox = [];
+			var ps = [];
+			var i;
+			for (i = 0; i < dates.length; i++) {
+				fetch('/data/summary/active/' + dates[i] + '.json')
+				.then(res => res.json())
+				.then((out) => {
+					xbox.push(out['xbox']);
+					ps.push(out['ps']);
+				})
+				.catch(err => {
+					xbox.push(0);
+					ps.push(0);
+				})
+			}
+			config.data.datasets[0].data = xbox;
+			config.data.datasets[1].data = ps;
+			if (document.getElementById('chartType').value == 'active'){
+				config.options.scales.yAxes[0].scaleLabel.labelString = 'Accounts'
+			}
+		}
+	</script>
+</body>
+</html>
