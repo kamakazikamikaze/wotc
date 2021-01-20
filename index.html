@@ -287,7 +287,7 @@
 			var chartType = document.getElementById('chartType');
 			for (i = 0; i < dates.length; i++) {
 				promises.push(
-					fetch('/data/summary/' + chartType.value + '/' + dates[i] + '.json')
+					fetch('/wotc/data/summary/' + chartType.value + '/' + dates[i] + '.json')
 					.then(response => response.json())
 					.catch(e => {
 						promises.push({})
