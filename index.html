@@ -10,6 +10,51 @@
 		-webkit-user-select: none;
 		-ms-user-select: none;
 	}
+	 /* The snackbar - position it at the bottom and in the middle of the screen */
+	#snackbar {
+		visibility: hidden; /* Hidden by default. Visible on click */
+		min-width: 250px; /* Set a default minimum width */
+		margin-left: -125px; /* Divide value of min-width by 2 */
+		background-color: #333; /* Black background color */
+		color: #fff; /* White text color */
+		text-align: center; /* Centered text */
+		border-radius: 2px; /* Rounded borders */
+		padding: 16px; /* Padding */
+		position: fixed; /* Sit on top of the screen */
+		z-index: 1; /* Add a z-index if needed */
+		left: 50%; /* Center the snackbar */
+		top: 30px; /* 30px from the bottom */
+	}
+
+	/* Show the snackbar when clicking on a button (class added with JavaScript) */
+	#snackbar.show {
+		visibility: visible; /* Show the snackbar */
+		/* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+		However, delay the fade out process for 2.5 seconds */
+		-webkit-animation: fadein 0.5s, fadeout 0.5s 999999s;
+		animation: fadein 0.5s, fadeout 0.5s 999999s;
+	}
+
+	/* Animations to fade the snackbar in and out */
+	@-webkit-keyframes fadein {
+		from {top: 0; opacity: 0;}
+		to {top: 30px; opacity: 1;}
+	}
+
+	@keyframes fadein {
+		from {top: 0; opacity: 0;}
+		to {top: 30px; opacity: 1;}
+	}
+
+	@-webkit-keyframes fadeout {
+		from {top: 30px; opacity: 1;}
+		to {top: 0; opacity: 0;}
+	}
+
+	@keyframes fadeout {
+		from {top: 30px; opacity: 1;}
+		to {top: 0; opacity: 0;}
+	} 
 	</style>
 </head>
 <body>
@@ -20,6 +65,7 @@
 	<div>
 		<canvas id="canvas">></canvas>
 	</div>
+	<div id="snackbar">Loading</div>
 	<br>
 	<label for="xbox">Xbox colors:</label> <select name="xbox" id="xbox">
 		<option value="red">Red</option>
@@ -30,6 +76,7 @@
 		<option value="purple">Purple</option>
 		<option value="grey">Grey</option>
 	</select>
+	<br>
 	<br>
 	<label for="ps">Playstation colors:</label> <select name="ps" id="ps">
 		<option value="red">Red</option>
@@ -45,8 +92,15 @@
 	<label for="charttype">Set Chart Type:</label> <select name="charttype" id="chartType">
 		<option value="active" selected>Active Accounts</option>
 		<option value="battles">Total Battles</option>
+		<option value="new">New Accounts</option>
 		<option value="min5">Minimum 5 battles</option>
 	</select>
+	<br>
+	<br>
+	<input id="toggleAnimations" type="checkbox">Enable Animations</input>
+	<br>
+	<br>
+	<button id="exportCSV" onclick="exportData()">Export to CSV</button>
 	<script>
 		// Manually define colors for our use
 		window.chartColors = {
@@ -61,7 +115,7 @@
 
 		// Monkey-patch the Date class
 		Date.prototype.addDays = function(days) {
-			var dat = new Date(this.valueOf())
+			var dat = new Date(this.valueOf());
 			dat.setDate(dat.getDate() + days);
 			return dat;
 		}
@@ -120,11 +174,7 @@
 				}]
 			},
 			options: {
-				animation: {
-					duration: 0,
-				},
 				responsive: true,
-				responsiveAnimationDuration: 0,
 				title: {
 					display: true,
 					text: 'WoTC Player Tracker'
@@ -136,7 +186,7 @@
 				hover: {
 					mode: 'nearest',
 					intersect: true,
-					animationDuration: 0,
+
 				},
 				scales: {
 					xAxes: [{
@@ -184,9 +234,22 @@
 			dates = datesToString(getDates(then, now));
 			config.data.labels = dates;
 			var ctx = document.getElementById('canvas').getContext('2d');
+			(async () => loadData(dates))();
 			window.chart = new Chart(ctx, config);
-			loadData(dates);
-			window.chart.update(0);
+
+			// Check if user is on mobile (battery-friendly view)
+			var toggleAnimations = document.getElementById('toggleAnimations');
+			var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+			if (isMobile) {
+				toggleAnimations.checked = false;
+				window.chart.update();
+			} else {
+				toggleAnimations.checked = true;
+				window.chart.update();
+			}
+			// Manually trigger event just in case
+			var event = new Event('change');
+			toggleAnimations.dispatchEvent(event);
 		};
 
 		// Additional functions and listener actions
@@ -194,43 +257,105 @@
 		document.getElementById('xbox').addEventListener('change', function() {
 			config.data.datasets[0].backgroundColor = window.chartColors[document.getElementById('xbox').value];
 			config.data.datasets[0].borderColor = window.chartColors[document.getElementById('xbox').value];
-			window.chart.update(0);
+			window.chart.update();
 		});
 
 		document.getElementById('ps').addEventListener('change', function() {
 			config.data.datasets[1].backgroundColor = window.chartColors[document.getElementById('ps').value];
 			config.data.datasets[1].borderColor = window.chartColors[document.getElementById('ps').value];
-			window.chart.update(0);
+			window.chart.update();
+		});
+
+		document.getElementById('chartType').addEventListener('change', function() {
+			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
+			(async () => loadData(dates))();
+			window.chart.update();
 		});
 
 		function updateTimeRange() {
 			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
 			config.data.labels = dates;
-			loadData(dates);
-			window.chart.update(0);
+			(async () => loadData(dates))();
+			window.chart.update();
 		}
 
-		function loadData(dates) {
-			var xbox = [];
-			var ps = [];
+		async function loadData(dates) {
+			var xbox = new Array();
+			var ps = new Array();
 			var i;
+			var promises = [];
+			var chartType = document.getElementById('chartType');
 			for (i = 0; i < dates.length; i++) {
-				fetch('/data/summary/active/' + dates[i] + '.json')
-				.then(res => res.json())
-				.then((out) => {
-					xbox.push(out['xbox']);
-					ps.push(out['ps']);
-				})
-				.catch(err => {
-					xbox.push(0);
-					ps.push(0);
-				})
+				promises.push(
+					fetch('/data/summary/' + chartType.value + '/' + dates[i] + '.json')
+					.then(response => response.json())
+					.catch(e => {
+						promises.push({})
+					})
+				)
 			}
+			var snackbar = document.getElementById('snackbar');
+			snackbar.className = 'show';
+			await Promise.all(promises).then(data => {
+				for (i = 0; i < data.length; i++) {
+					if (data[i] != undefined) {
+						xbox.push(data[i].xbox);
+						ps.push(data[i].ps);
+					} else {
+						xbox.push(null);
+						ps.push(null);
+					}
+				}
+			});
+			snackbar.className = snackbar.className.replace('show', '');
 			config.data.datasets[0].data = xbox;
 			config.data.datasets[1].data = ps;
-			if (document.getElementById('chartType').value == 'active'){
-				config.options.scales.yAxes[0].scaleLabel.labelString = 'Accounts'
+			switch (chartType.value) {
+				case 'active':
+					config.options.scales.yAxes[0].scaleLabel.labelString = 'Accounts';
+					break;
+				case 'battles':
+					config.options.scales.yAxes[0].scaleLabel.labelString = 'Battles';
+					break;
+				case 'new':
+					config.options.scales.yAxes[0].scaleLabel.labelString = 'New Accounts';
+					break;
+				case 'min5':
+					config.options.scales.yAxes[0].scaleLabel.labelString = 'Accounts';
+					break;
 			}
+			window.chart.update();
+		}
+
+		document.getElementById('toggleAnimations').addEventListener('change', function() {
+			if (document.getElementById('toggleAnimations').checked) {
+				delete config.options.animation;
+				delete config.options.responsiveAnimationDuration;
+				delete config.options.hover.animationDuration;
+			} else {
+				config.options.animation = { duration: 0 };
+				config.options.responsiveAnimationDuration = 0;
+				config.options.hover.animationDuration = 0;
+			}
+			window.chart.update();
+		});
+
+		function exportData(){
+			var rows = [['date', 'xbox', 'ps']];
+			var i;
+			labels = window.chart.config.data.labels;
+			xbox = window.chart.config.data.datasets[0].data;
+			ps = window.chart.config.data.datasets[1].data;
+			for (i = 0; i < labels.length; i++) {
+				rows.push([labels[i], xbox[i], ps[i]])
+			}
+			var pom = document.createElement('a');
+			let csvContent = rows.map(e => e.join(",")).join("\n");
+			var blob = new Blob([csvContent], {type: 'text/csv;chartset=utf-8;'});
+			var url = URL.createObjectURL(blob);
+			pom.href = url;
+			pom.setAttribute('download', document.getElementById('chartType').value + '_' + labels[0] + '_to_' + labels[labels.length - 1] + '_' + '.csv')
+			pom.click();
 		}
 	</script>
 </body>
