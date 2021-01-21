@@ -1,5 +1,6 @@
 # coding: utf-8
 from argparse import ArgumentParser, Action
+from collections import OrderedDict
 from datetime import datetime, timedelta
 from elasticsearch6 import Elasticsearch
 from json import load, dump
@@ -236,7 +237,8 @@ def timerange(start, end=datetime.utcnow(), step=90):
         next_iter = next_iter + delta
 
 
-def query_active_accounts(elastic, index, start, end=datetime.utcnow(), step=90):
+def query_active_accounts(elastic, index, start, end=datetime.utcnow(), step=90, skip=False):
+    data = {'xbox': OrderedDict(), 'ps': OrderedDict()}
     tr = timerange(start, end, step)
     for older, newer in tr:
         players_query['query']['bool'][
@@ -247,16 +249,27 @@ def query_active_accounts(elastic, index, start, end=datetime.utcnow(), step=90)
 
         for bucket in players['aggregations']['2']['buckets']:
             key = bucket['key_as_string'].split('T')[0]
+            data['xbox'][key] = 0
+            data['ps'][key] = 0
             if not bucket['3']['buckets']:
                 continue
-            data = {}
             for subbucket in bucket['3']['buckets']:
-                data[subbucket['key']] = subbucket['doc_count']
+                data[subbucket['key']][key] = subbucket['doc_count']
+
+        skip_next = False
+        for key, value in data['ps'].items():
+            if skip and value < 20000:
+                skip_next = True
+                continue
+            elif skip and skip_next:
+                skip_next = False
+                continue
             with open('data/summary/active/' + key + '.json', 'w') as f:
-                dump(data, f)
+                dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
-def query_battles(elastic, index, start, end=datetime.utcnow(), step=90):
+def query_battles(elastic, index, start, end=datetime.utcnow(), step=90, skip=False):
+    data = {'xbox': OrderedDict(), 'ps': OrderedDict()}
     tr = timerange(start, end, step)
     for older, newer in tr:
         battles_query['query']['bool'][
@@ -267,13 +280,23 @@ def query_battles(elastic, index, start, end=datetime.utcnow(), step=90):
 
         for bucket in battles['aggregations']['2']['buckets']:
             key = bucket['key_as_string'].split('T')[0]
+            data['xbox'][key] = 0
+            data['ps'][key] = 0
             if not bucket['3']['buckets']:
                 continue
-            data = {}
             for subbucket in bucket['3']['buckets']:
-                data[subbucket['key']] = subbucket['1']['value']
+                data[subbucket['key']][key] = subbucket['1']['value']
+
+        skip_next = False
+        for key, value in data['ps'].items():
+            if skip and value < 400000:
+                skip_next = True
+                continue
+            elif skip and skip_next:
+                skip_next = False
+                continue
             with open('data/summary/battles/' + key + '.json', 'w') as f:
-                dump(data, f)
+                dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
 def query_new_players(elastic, index, start, end=datetime.utcnow(), step=90):
@@ -296,7 +319,8 @@ def query_new_players(elastic, index, start, end=datetime.utcnow(), step=90):
                 dump(data, f)
 
 
-def query_min_5_a_day(elastic, index, start, end=datetime.utcnow(), step=90):
+def query_min_5_a_day(elastic, index, start, end=datetime.utcnow(), step=90, skip=False):
+    data = {'xbox': OrderedDict(), 'ps': OrderedDict()}
     tr = timerange(start, end, step)
     for older, newer in tr:
         five_battles_a_day_query['query']['bool'][
@@ -307,17 +331,27 @@ def query_min_5_a_day(elastic, index, start, end=datetime.utcnow(), step=90):
 
         for bucket in five_battles['aggregations']['4']['buckets']:
             key = bucket['key_as_string'].split('T')[0]
+            data['xbox'][key] = 0
+            data['ps'][key] = 0
             if not bucket['3']['buckets']:
                 continue
-            data = {}
             for subbucket in bucket['3']['buckets']:
-                data[subbucket['key']] = subbucket['2']['buckets']['5.0-*']['doc_count']
+                data[subbucket['key']][key] = subbucket['2']['buckets']['5.0-*']['doc_count']
+
+        skip_next = False
+        for key, value in data['ps'].items():
+            if skip and value < 20000:
+                skip_next = True
+                continue
+            elif skip and skip_next:
+                skip_next = False
+                continue
             with open('data/summary/min5/' + key + '.json', 'w') as f:
-                dump(data, f)
+                dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
 class ConvertTime(Action):
-    def __call__(self, parser, namespace, values, default, option_string=None):
+    def __call__(self, parser, namespace, values, default, option_string=None, skip_dates=None):
         if values is None:
             setattr(namespace, self.dest, default)
         elif isinstance(values, datetime):
@@ -334,6 +368,7 @@ if __name__ == '__main__':
     agp.add_argument('-c', '--config', default='config.json')
     agp.add_argument('-e', '--end', default=datetime.utcnow(), action=ConvertTime, help='%Y-%m-%d format')
     agp.add_argument('--step', default=90)
+    agp.add_argument('--skip', action='store_true')
 
     args = agp.parse_args()
 
@@ -342,7 +377,7 @@ if __name__ == '__main__':
 
     es = Elasticsearch(**config['elasticsearch'])
 
-    query_active_accounts(es, config['es index'], args.start, args.end, args.step)
-    query_battles(es, config['es index'], args.start, args.end, args.step)
-    query_new_players(es, 'players', args.start, args.end, args.step)
-    query_min_5_a_day(es, config['es index'], args.start, args.end, args.step)
+    query_active_accounts(es, config['es index'], args.start, args.end, args.step, args.skip)
+    query_battles(es, config['es index'], args.start, args.end, args.step, args.skip)
+    #query_new_players(es, 'players', args.start, args.end, args.step)
+    query_min_5_a_day(es, config['es index'], args.start, args.end, args.step, args.skip)
