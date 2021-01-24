@@ -106,7 +106,7 @@
 	<button id="exportCSV" onclick="exportData()">Export to CSV</button>
 	<br>
 	<br>
-	<center>Check data availability<br><input type="text" name="availabledata" id="availableData" /><br>(highlighted)</center>
+	<center>Highlighted dates indicate data is available for chart type<br><input type="text" name="availabledata" id="availableData" /><br></center>
 	<script>
 		// Manually define colors for our use
 		// Darker first set
@@ -142,6 +142,7 @@
 
 		// Calculate inital date range
 		var now = new Date();
+		now.setDate(now.getDate() - 1);
 		var then = new Date();
 		then.setDate(now.getDate() - 6);
 
@@ -178,6 +179,7 @@
 			mobileFriendly: window.isMobile,
 			showTooltip: true,
 			singleMode: true,
+			inlineMode: true,
 		});
 
 		var config = {
