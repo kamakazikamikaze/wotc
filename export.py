@@ -264,7 +264,8 @@ def query_active_accounts(elastic, index, start, end=datetime.utcnow(), step=90,
             elif skip and skip_next:
                 skip_next = False
                 continue
-            with open('data/summary/active/' + key + '.json', 'w') as f:
+            # Gotta convert the time to represent the day of activity, not the day the collection ran
+            with open('data/summary/active/' + (datetime.strptime(key, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d') + '.json', 'w') as f:
                 dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
@@ -295,7 +296,8 @@ def query_battles(elastic, index, start, end=datetime.utcnow(), step=90, skip=Fa
             elif skip and skip_next:
                 skip_next = False
                 continue
-            with open('data/summary/battles/' + key + '.json', 'w') as f:
+            # Gotta convert the time to represent the day of activity, not the day the collection ran
+            with open('data/summary/battles/' + (datetime.strptime(key, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d') + '.json', 'w') as f:
                 dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
@@ -315,6 +317,7 @@ def query_new_players(elastic, index, start, end=datetime.utcnow(), step=90):
             data = {}
             for subbucket in bucket['3']['buckets']:
                 data[subbucket['key']] = subbucket['doc_count']
+            # No time conversion. Timestamps are provided by WG
             with open('data/summary/new/' + key + '.json', 'w') as f:
                 dump(data, f)
 
@@ -346,7 +349,8 @@ def query_min_5_a_day(elastic, index, start, end=datetime.utcnow(), step=90, ski
             elif skip and skip_next:
                 skip_next = False
                 continue
-            with open('data/summary/min5/' + key + '.json', 'w') as f:
+            # Gotta convert the time to represent the day of activity, not the day the collection ran
+            with open('data/summary/min5/' + (datetime.strptime(key, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d') + '.json', 'w') as f:
                 dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
@@ -379,5 +383,5 @@ if __name__ == '__main__':
 
     query_active_accounts(es, config['es index'], args.start, args.end, args.step, args.skip)
     query_battles(es, config['es index'], args.start, args.end, args.step, args.skip)
-    #query_new_players(es, 'players', args.start, args.end, args.step)
+    query_new_players(es, 'players', args.start, args.end, args.step)
     query_min_5_a_day(es, config['es index'], args.start, args.end, args.step, args.skip)

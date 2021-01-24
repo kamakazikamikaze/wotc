@@ -97,21 +97,38 @@
 	</select>
 	<br>
 	<br>
-	<input id="toggleAnimations" type="checkbox">Enable Animations</input>
+	<input id="enableCompare" type="checkbox" />Compare to another time <input type="text" name="daterange2" id="dateRange2" size="23" hidden="true" />
+	<br>
+	<br>
+	<input id="toggleAnimations" type="checkbox" />Enable Animations
 	<br>
 	<br>
 	<button id="exportCSV" onclick="exportData()">Export to CSV</button>
 	<script>
 		// Manually define colors for our use
+		// Darker first set
 		window.chartColors = {
+			red: 'rgb(214, 6, 48)',
+			orange: 'rgb(240, 136, 0)',
+			yellow: 'rgb(237, 237, 0)',
+			green: 'rgb(11, 222, 0)',
+			blue: 'rgb(0, 98, 255)',
+			purple: 'rgb(79, 0, 237)',
+			grey: 'rgb(99, 100, 102)'
+		};
+
+		// Faded second set
+		window.compareColors = {
 			red: 'rgb(255, 99, 132)',
-			orange: 'rgb(255, 159, 64)',
-			yellow: 'rgb(255, 205, 86)',
-			green: 'rgb(75, 192, 192)',
-			blue: 'rgb(54, 162, 235)',
-			purple: 'rgb(153, 102, 255)',
+			orange: 'rgb(252, 194, 119)',
+			yellow: 'rgb(255, 250, 161)',
+			green: 'rgb(171, 255, 150)',
+			blue: 'rgb(128, 199, 255)',
+			purple: 'rgb(197, 161, 255)',
 			grey: 'rgb(201, 203, 207)'
 		};
+
+		window.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 		// Monkey-patch the Date class
 		Date.prototype.addDays = function(days) {
@@ -129,9 +146,23 @@
 			element: document.getElementById('dateRange'),
 			format: 'YYYY-MM-DD',
 			autoApply: true,
-			mobileFriendly: true,
+			mobileFriendly: window.isMobile,
 			showTooltip: true,
 			singleMode: false,
+			startDate: then.toISOString().slice(0, 10),
+			endDate: now.toISOString().slice(0, 10),
+			onSelect: updateTimeRange,
+		});
+
+		window.picker2 = new Litepicker({
+			element: document.getElementById('dateRange2'),
+			format: 'YYYY-MM-DD',
+			autoApply: true,
+			mobileFriendly: window.isMobile,
+			showTooltip: true,
+			singleMode: false,
+			minDays: 7,
+			maxDays: 7,
 			startDate: then.toISOString().slice(0, 10),
 			endDate: now.toISOString().slice(0, 10),
 			onSelect: updateTimeRange,
@@ -237,13 +268,13 @@
 			dates = datesToString(getDates(then, now));
 			config.data.labels = dates;
 			var ctx = document.getElementById('canvas').getContext('2d');
-			(async () => loadData(dates))();
+			(async () => loadData(dates, null))();
 			window.chart = new Chart(ctx, config);
 
 			// Check if user is on mobile (battery-friendly view)
 			var toggleAnimations = document.getElementById('toggleAnimations');
-			var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-			if (isMobile) {
+			var enableCompare = document.getElementById('enableCompare');
+			if (window.isMobile) {
 				toggleAnimations.checked = false;
 				window.chart.update();
 			} else {
@@ -253,6 +284,8 @@
 			// Manually trigger event just in case
 			var event = new Event('change');
 			toggleAnimations.dispatchEvent(event);
+			enableCompare.checked = false;
+			enableCompare.dispatchEvent(event);
 		};
 
 		// Additional functions and listener actions
@@ -260,31 +293,88 @@
 		document.getElementById('xbox').addEventListener('change', function() {
 			config.data.datasets[0].backgroundColor = window.chartColors[document.getElementById('xbox').value];
 			config.data.datasets[0].borderColor = window.chartColors[document.getElementById('xbox').value];
+			if (document.getElementById('enableCompare').checked){
+				config.data.datasets[2].backgroundColor = window.compareColors[document.getElementById('xbox').value];
+				config.data.datasets[2].borderColor = window.compareColors[document.getElementById('xbox').value];
+			}
 			window.chart.update();
 		});
 
 		document.getElementById('ps').addEventListener('change', function() {
 			config.data.datasets[1].backgroundColor = window.chartColors[document.getElementById('ps').value];
 			config.data.datasets[1].borderColor = window.chartColors[document.getElementById('ps').value];
+			if (document.getElementById('enableCompare').checked){
+				config.data.datasets[3].backgroundColor = window.compareColors[document.getElementById('ps').value];
+				config.data.datasets[3].borderColor = window.compareColors[document.getElementById('ps').value];
+			}
 			window.chart.update();
 		});
 
 		document.getElementById('chartType').addEventListener('change', function() {
 			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
-			(async () => loadData(dates))();
+			compareDates = null;
+			if (enableCompare.checked){
+				compareDates = datesToString(getDates(window.picker2.getStartDate(), window.picker2.getEndDate()));
+			}
+			(async () => loadData(dates, compareDates))();
+			window.chart.update();
+		});
+
+		document.getElementById('enableCompare').addEventListener('change', function() {
+			dateRange2 = document.getElementById('dateRange2');
+			if (this.checked) {
+				dateRange2.hidden = false;
+				config.data.datasets.push({
+					label: 'Xbox - Set 2',
+					fill: false,
+					backgroundColor: window.compareColors[document.getElementById('xbox').value],
+					borderColor: window.compareColors[document.getElementById('xbox').value],
+					data: [],
+				});
+				config.data.datasets.push({
+					label: 'Playstation - Set 2',
+					fill: false,
+					backgroundColor: window.compareColors[document.getElementById('ps').value],
+					borderColor: window.compareColors[document.getElementById('ps').value],
+					data: [],
+				});
+			} else {
+				dateRange2.hidden = true;
+				while (config.data.datasets.length > 2) {
+					config.data.datasets.pop();
+				}
+			}
+			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
+			config.data.labels = dates;
 			window.chart.update();
 		});
 
 		function updateTimeRange() {
 			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
-			config.data.labels = dates;
-			(async () => loadData(dates))();
+			window.picker2.options.minDays = dates.length;
+			window.picker2.options.maxDays = dates.length;
+			compareDates = null;
+			var i;
+			var enableCompare = document.getElementById('enableCompare');
+			if (enableCompare.checked){
+				compareDates = datesToString(getDates(window.picker2.getStartDate(), window.picker2.getEndDate()));
+				var labels = new Array();
+				for (i = 0; i < compareDates.length; i++){
+					labels.push(dates[i] + ' | ' + compareDates[i])
+				}
+				config.data.labels = labels;
+			} else {
+				config.data.labels = dates;
+			}
+			(async () => loadData(dates, compareDates))();
 			window.chart.update();
 		}
 
-		async function loadData(dates) {
+		async function loadData(dates, compareDates) {
 			var xbox = new Array();
 			var ps = new Array();
+			var xbox2 = new Array();
+			var ps2 = new Array();
 			var i;
 			var promises = [];
 			var chartType = document.getElementById('chartType');
@@ -297,10 +387,21 @@
 					})
 				)
 			}
+			if (compareDates != null){
+				for (i = 0; i < compareDates.length; i++) {
+					promises.push(
+						fetch('/wotc/data/summary/' + chartType.value + '/' + compareDates[i] + '.json')
+						.then(response => response.json())
+						.catch(e => {
+							promises.push({})
+						})
+					)
+				}
+			}
 			var snackbar = document.getElementById('snackbar');
 			snackbar.className = 'show';
 			await Promise.all(promises).then(data => {
-				for (i = 0; i < data.length; i++) {
+				for (i = 0; i < dates.length; i++) {
 					if (data[i] != undefined) {
 						xbox.push(data[i].xbox);
 						ps.push(data[i].ps);
@@ -309,22 +410,41 @@
 						ps.push(null);
 					}
 				}
+				if (compareDates != null){
+					for (i = dates.length; i < data.length + compareDates.length; i++) {
+						if (data[i] != undefined) {
+							xbox2.push(data[i].xbox);
+							ps2.push(data[i].ps);
+						} else {
+							xbox2.push(null);
+							ps2.push(null);
+						}
+					}
+				}
 			});
 			snackbar.className = snackbar.className.replace('show', '');
 			config.data.datasets[0].data = xbox;
 			config.data.datasets[1].data = ps;
+			if (compareDates != null){
+				config.data.datasets[2].data = xbox2;
+				config.data.datasets[3].data = ps2;
+			}
 			switch (chartType.value) {
 				case 'active':
 					config.options.scales.yAxes[0].scaleLabel.labelString = 'Accounts';
+					config.options.title.text = 'Active Accounts';
 					break;
 				case 'battles':
 					config.options.scales.yAxes[0].scaleLabel.labelString = 'Battles';
+					config.options.title.text = 'Total Battles Played Per Account';
 					break;
 				case 'new':
 					config.options.scales.yAxes[0].scaleLabel.labelString = 'New Accounts';
+					config.options.title.text = 'New Accounts Registered';
 					break;
 				case 'min5':
 					config.options.scales.yAxes[0].scaleLabel.labelString = 'Accounts';
+					config.options.title.text = 'Active Accounts With Minimum 5 Battles Played';
 					break;
 			}
 			window.chart.update();
@@ -349,8 +469,17 @@
 			labels = window.chart.config.data.labels;
 			xbox = window.chart.config.data.datasets[0].data;
 			ps = window.chart.config.data.datasets[1].data;
-			for (i = 0; i < labels.length; i++) {
-				rows.push([labels[i], xbox[i], ps[i]])
+			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
+			for (i = 0; i < dates.length; i++) {
+				rows.push([dates[i], xbox[i], ps[i]]);
+			}
+			if (document.getElementById('enableCompare').checked){
+				xbox2 = window.chart.config.data.datasets[2].data;
+				ps2 = window.chart.config.data.datasets[3].data;
+				var compareDates = datesToString(getDates(window.picker2.getStartDate(), window.picker2.getEndDate()));
+				for (i = 0; i < compareDates.length; i++) {
+					rows.push([compareDates[i], xbox2[i], ps2[i]]);
+				}
 			}
 			var pom = document.createElement('a');
 			let csvContent = rows.map(e => e.join(",")).join("\n");
