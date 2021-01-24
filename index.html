@@ -104,6 +104,9 @@
 	<br>
 	<br>
 	<button id="exportCSV" onclick="exportData()">Export to CSV</button>
+	<br>
+	<br>
+	<center>Check data availability<br><input type="text" name="availabledata" id="availableData" /><br>(highlighted)</center>
 	<script>
 		// Manually define colors for our use
 		// Darker first set
@@ -166,6 +169,15 @@
 			startDate: then.toISOString().slice(0, 10),
 			endDate: now.toISOString().slice(0, 10),
 			onSelect: updateTimeRange,
+		});
+
+		window.availablePicker = new Litepicker({
+			element: document.getElementById('availableData'),
+			format: 'YYYY-MM-DD',
+			autoApply: true,
+			mobileFriendly: window.isMobile,
+			showTooltip: true,
+			singleMode: true,
 		});
 
 		var config = {
@@ -286,6 +298,7 @@
 			toggleAnimations.dispatchEvent(event);
 			enableCompare.checked = false;
 			enableCompare.dispatchEvent(event);
+			(async () => grabAvailable())();
 		};
 
 		// Additional functions and listener actions
@@ -317,6 +330,7 @@
 				compareDates = datesToString(getDates(window.picker2.getStartDate(), window.picker2.getEndDate()));
 			}
 			(async () => loadData(dates, compareDates))();
+			(async () => grabAvailable())();
 			window.chart.update();
 		});
 
@@ -448,6 +462,19 @@
 					break;
 			}
 			window.chart.update();
+		}
+
+		async function grabAvailable(){
+			var chartType = document.getElementById('chartType');
+			if (chartType.value == 'new') {
+				window.availablePicker.setHighlightedDays([[new Date("2014-01-29T16:50:14Z"), new Date()]]);
+			} else {
+				fetch('/wotc/data/available/' + chartType.value + '.txt')
+				.then((resp) => resp.text())
+				.then(data => {
+					window.availablePicker.setHighlightedDays(data.split('\n'));
+				});
+			}
 		}
 
 		document.getElementById('toggleAnimations').addEventListener('change', function() {

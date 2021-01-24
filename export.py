@@ -4,6 +4,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta
 from elasticsearch6 import Elasticsearch
 from json import load, dump
+from os import listdir
 
 players_query = {
     "aggs": {
@@ -354,6 +355,18 @@ def query_min_5_a_day(elastic, index, start, end=datetime.utcnow(), step=90, ski
                 dump({'xbox': data['xbox'][key], 'ps': data['ps'][key]}, f)
 
 
+def create_file_listings():
+    active = listdir('data/summary/active/')
+    with open('data/available/active.txt', 'w') as f:
+        f.writelines(map(lambda l: l.split('.')[0] + '\n', sorted(active)))
+    battles = listdir('data/summary/battles/')
+    with open('data/available/battles.txt', 'w') as f:
+        f.writelines(map(lambda l: l.split('.')[0] + '\n', sorted(battles)))
+    min5 = listdir('data/summary/min5/')
+    with open('data/available/min5.txt', 'w') as f:
+        f.writelines(map(lambda l: l.split('.')[0] + '\n', sorted(min5)))
+
+
 class ConvertTime(Action):
     def __call__(self, parser, namespace, values, default, option_string=None, skip_dates=None):
         if values is None:
@@ -371,7 +384,7 @@ if __name__ == '__main__':
     agp.add_argument('-s', '--start', default=datetime(2014, 1, 1, 0, 0), action=ConvertTime, help='%Y-%m-%d format')
     agp.add_argument('-c', '--config', default='config.json')
     agp.add_argument('-e', '--end', default=datetime.utcnow(), action=ConvertTime, help='%Y-%m-%d format')
-    agp.add_argument('--step', default=90)
+    agp.add_argument('--step', default=90, type=int)
     agp.add_argument('--skip', action='store_true')
 
     args = agp.parse_args()
@@ -385,3 +398,4 @@ if __name__ == '__main__':
     query_battles(es, config['es index'], args.start, args.end, args.step, args.skip)
     query_new_players(es, 'players', args.start, args.end, args.step)
     query_min_5_a_day(es, config['es index'], args.start, args.end, args.step, args.skip)
+    create_file_listings()
