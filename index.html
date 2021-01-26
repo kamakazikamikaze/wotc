@@ -103,6 +103,9 @@
 	<input id="toggleAnimations" type="checkbox" />Enable Animations
 	<br>
 	<br>
+	<input id="toggleMobileFriendly" type="checkbox" checked="true" />Enable mobile-friendly calendar
+	<br>
+	<br>
 	<button id="exportCSV" onclick="exportData()">Export to CSV</button>
 	<br>
 	<br>
@@ -157,9 +160,12 @@
 			element: document.getElementById('dateRange'),
 			format: 'YYYY-MM-DD',
 			autoApply: true,
-			mobileFriendly: window.isMobile,
+			//mobileFriendly: false,
 			showTooltip: true,
 			singleMode: false,
+			splitView: true,
+			numberOfMonths: 2,
+			numberOfColumns: 2,
 			startDate: then.toISOString().slice(0, 10),
 			endDate: now.toISOString().slice(0, 10),
 			onSelect: updateTimeRange,
@@ -169,9 +175,12 @@
 			element: document.getElementById('dateRange2'),
 			format: 'YYYY-MM-DD',
 			autoApply: true,
-			mobileFriendly: window.isMobile,
+			//mobileFriendly: false,
 			showTooltip: true,
 			singleMode: false,
+			splitView: true,
+			numberOfMonths: 2,
+			numberOfColumns: 2,
 			minDays: 30,
 			maxDays: 30,
 			startDate: then.toISOString().slice(0, 10),
@@ -183,7 +192,7 @@
 			element: document.getElementById('availableData'),
 			format: 'YYYY-MM-DD',
 			autoApply: true,
-			mobileFriendly: window.isMobile,
+			//mobileFriendly: false,
 			showTooltip: true,
 			singleMode: true,
 			inlineMode: true,
@@ -481,6 +490,19 @@
 				config.options.hover.animationDuration = 0;
 			}
 			window.chart.update();
+		});
+
+		document.getElementById('toggleMobileFriendly').addEventListener('change', function() {
+			toggleMobileFriendly = document.getElementById('toggleMobileFriendly');
+			var options = null;
+			if (toggleMobileFriendly.checked){
+				options = {mobileFriendly: true};
+			} else {
+				options = {splitView: true, numberOfMonths: 2, numberOfColumns: 2, mobileFriendly: false};
+			}
+			window.picker.setOptions(options);
+			window.picker2.setOptions(options);
+			window.availableData.setOptions(options);
 		});
 
 		function exportData(){
