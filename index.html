@@ -107,6 +107,13 @@
 	<br>
 	<br>
 	<center>Highlighted dates indicate data is available for chart type<br><input type="text" name="availabledata" id="availableData" /><br></center>
+	<br>
+	<br>
+	<center>
+	<a href="https://github.com/kamakazikamikaze/wotc">Data repo for this site</a>
+	<br>
+	<a href="https://twitter.com/WOTC_Tracker">Track additional info on Twitter</a>
+	</center>
 	<script>
 		// Manually define colors for our use
 		// Darker first set
@@ -144,7 +151,7 @@
 		var now = new Date();
 		now.setDate(now.getDate() - 1);
 		var then = new Date();
-		then.setDate(now.getDate() - 6);
+		then.setDate(now.getDate() - 29);
 
 		window.picker = new Litepicker({
 			element: document.getElementById('dateRange'),
@@ -165,8 +172,8 @@
 			mobileFriendly: window.isMobile,
 			showTooltip: true,
 			singleMode: false,
-			minDays: 7,
-			maxDays: 7,
+			minDays: 30,
+			maxDays: 30,
 			startDate: then.toISOString().slice(0, 10),
 			endDate: now.toISOString().slice(0, 10),
 			onSelect: updateTimeRange,
@@ -192,30 +199,14 @@
 					fill: false,
 					backgroundColor: window.chartColors[document.getElementById('xbox').value],
 					borderColor: window.chartColors[document.getElementById('xbox').value],
-					data: [
-						1,
-						2,
-						3,
-						4,
-						5,
-						6,
-						7
-					],
+					data: [...Array(30).keys()],
 				},
 				{
 					label: 'Playstation',
 					fill: false,
 					backgroundColor: window.chartColors[document.getElementById('ps').value],
 					borderColor: window.chartColors[document.getElementById('ps').value],
-					data: [
-						7,
-						6,
-						5,
-						4,
-						3,
-						2,
-						1
-					],
+					data: [...Array(30).keys()].reverse(),
 				}]
 			},
 			options: {
