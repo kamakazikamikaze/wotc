@@ -58,65 +58,86 @@
 	</style>
 </head>
 <body>
-	<center>
-	<input type="text" name="daterange" id="dateRange" size="23" />
-	</center>
+	<div style="text-align: center;">
+		<input type="text" name="daterange" id="dateRange" size="23" />
+	</div>
 	<br>
 	<div>
 		<canvas id="canvas">></canvas>
 	</div>
 	<div id="snackbar">Loading</div>
 	<br>
-	<label for="xbox">Xbox colors:</label> <select name="xbox" id="xbox">
-		<option value="red">Red</option>
-		<option value="orange">Orange</option>
-		<option value="yellow">Yellow</option>
-		<option value="green" selected>Green</option>
-		<option value="blue">Blue</option>
-		<option value="purple">Purple</option>
-		<option value="grey">Grey</option>
-	</select>
+	<button id="exportCSV" onclick="exportData()" style="position: absolute; left: 1%;">Export to CSV</button>
+	<!-- <button id="exportImage" type="submit" onclick="window.open(getPNGHref())" style="position: absolute; left: 25%">Export to PNG</button> -->
+	<button id="exportImage" onclick="downloadPNG()" style="position: absolute; left: 15%">Export to PNG</button>
+	<button id="refreshData" onclick="refreshGraph()" style="position: absolute; left: 30%">Refresh Data</button>
 	<br>
 	<br>
-	<label for="ps">Playstation colors:</label> <select name="ps" id="ps">
-		<option value="red">Red</option>
-		<option value="orange">Orange</option>
-		<option value="yellow">Yellow</option>
-		<option value="green">Green</option>
-		<option value="blue" selected>Blue</option>
-		<option value="purple">Purple</option>
-		<option value="grey">Grey</option>
-	</select>
+	<label>Xbox colors:
+		<select name="xbox" id="xbox">
+			<option value="red">Red</option>
+			<option value="orange">Orange</option>
+			<option value="yellow">Yellow</option>
+			<option value="green" selected>Green</option>
+			<option value="blue">Blue</option>
+			<option value="purple">Purple</option>
+			<option value="grey">Grey</option>
+		</select>
+	</label>
 	<br>
 	<br>
-	<label for="charttype">Set Chart Type:</label> <select name="charttype" id="chartType">
-		<option value="active" selected>Active Accounts</option>
-		<option value="battles">Total Battles</option>
-		<option value="new">New Accounts</option>
-		<option value="min5">Minimum 5 battles</option>
-	</select>
+	<label>Playstation colors:
+		<select name="ps" id="ps">
+			<option value="red">Red</option>
+			<option value="orange">Orange</option>
+			<option value="yellow">Yellow</option>
+			<option value="green">Green</option>
+			<option value="blue" selected>Blue</option>
+			<option value="purple">Purple</option>
+			<option value="grey">Grey</option>
+		</select>
+	</label>
 	<br>
 	<br>
-	<input id="enableCompare" type="checkbox" />Compare to another time <input type="text" name="daterange2" id="dateRange2" size="23" hidden="true" />
+	<label>Set Chart Type:
+		<select name="charttype" id="chartType">
+			<option value="active" selected>Active Accounts</option>
+			<option value="battles">Total Battles</option>
+			<option value="new">New Accounts</option>
+			<option value="min5">Minimum 5 battles</option>
+		</select>
+	</label>
 	<br>
 	<br>
-	<input id="toggleAnimations" type="checkbox" />Enable Animations
+	<label>
+		<input id="enableCompare" type="checkbox" />Compare to another time
+	</label>
+	<input type="text" name="daterange2" id="dateRange2" size="23" hidden="true" />
 	<br>
 	<br>
-	<input id="toggleMobileFriendly" type="checkbox" checked="true" />Enable mobile-friendly calendar
+	<label>
+		<input id="toggleAnimations" type="checkbox" />
+		Enable Animations
+	</label>
+	<label style="position: absolute; left: 25%;">
+		<input id="toggleMobileFriendly" type="checkbox" checked="true" />
+		Enable mobile-friendly calendar
+	</label>
 	<br>
 	<br>
-	<button id="exportCSV" onclick="exportData()">Export to CSV</button>
-	<br>
-	<br>
-	<center>Highlighted dates indicate data is available for chart type<br><input type="text" name="availabledata" id="availableData" /><br></center>
-	<br>
-	<br>
-	<center>
-	<a href="https://github.com/kamakazikamikaze/wotc">Data repo for this site</a>
-	<br>
-	<a href="https://twitter.com/WOTC_Tracker">Track additional info on Twitter</a>
-	</center>
+	<div style="text-align: center;">
+		Highlighted dates indicate data is available for chart type
+		<br>
+		<input type="text" name="availabledata" id="availableData" />
+		<br>
+	</div>
+	<div style="text-align: center;">
+		<br>
+		<br>
+		<a href="https://github.com/kamakazikamikaze/wotc">Data repo for this site</a>
+		<br>
+		<a href="https://twitter.com/WOTC_Tracker">Track additional info on Twitter</a>
+	</div>
 	<script>
 		// Manually define colors for our use
 		// Darker first set
@@ -238,7 +259,7 @@
 						display: true,
 						scaleLabel: {
 							display: true,
-							labelString: 'Day'
+							labelString: 'https://kamakazikamikaze.github.io/wotc'
 						},
 						ticks: {
 							minRotation: 0,
@@ -528,8 +549,31 @@
 			var blob = new Blob([csvContent], {type: 'text/csv;chartset=utf-8;'});
 			var url = URL.createObjectURL(blob);
 			pom.href = url;
-			pom.setAttribute('download', document.getElementById('chartType').value + '_' + labels[0] + '_to_' + labels[labels.length - 1] + '_' + '.csv')
+			pom.setAttribute('download', document.getElementById('chartType').value + '_' + labels[0] + '_to_' + labels[labels.length - 1] + '.csv');
 			pom.click();
+		}
+
+		function refreshGraph(){
+			dates = datesToString(getDates(window.picker.getStartDate(), window.picker.getEndDate()));
+			compareDates = null;
+			if (enableCompare.checked){
+				compareDates = datesToString(getDates(window.picker2.getStartDate(), window.picker2.getEndDate()));
+			}
+			(async () => loadData(dates, compareDates))();
+			// (async () => grabAvailable())();
+			window.chart.update();
+		}
+
+		function getPNGHref(){
+			return window.chart.toBase64Image();
+		}
+
+		function downloadPNG(){
+			var a = document.createElement('a');
+			labels = window.chart.config.data.labels;
+			a.href = getPNGHref();
+			a.setAttribute('download', document.getElementById('chartType').value + '_' + labels[0] + '_to_' + labels[labels.length - 1] + '.png');
+			a.click();
 		}
 	</script>
 </body>
