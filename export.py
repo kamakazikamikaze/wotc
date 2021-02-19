@@ -381,9 +381,9 @@ class ConvertTime(Action):
 
 if __name__ == '__main__':
     agp = ArgumentParser()
-    agp.add_argument('-s', '--start', default=datetime(2014, 1, 1, 0, 0), action=ConvertTime, help='%Y-%m-%d format')
+    agp.add_argument('-s', '--start', default=datetime(2014, 1, 1, 0, 0), action=ConvertTime, help='%%Y-%%m-%%d format')
     agp.add_argument('-c', '--config', default='config.json')
-    agp.add_argument('-e', '--end', default=datetime.utcnow(), action=ConvertTime, help='%Y-%m-%d format')
+    agp.add_argument('-e', '--end', default=datetime.utcnow(), action=ConvertTime, help='%%Y-%%m-%%d format')
     agp.add_argument('--step', default=90, type=int)
     agp.add_argument('--skip', action='store_true')
 
