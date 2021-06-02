@@ -167,15 +167,15 @@
 		// Monkey-patch the Date class
 		Date.prototype.addDays = function(days) {
 			var dat = new Date(this.valueOf());
-			dat.setDate(dat.getDate() + days);
+			dat.setUTCDate(dat.getUTCDate() + days);
 			return dat;
 		}
 
 		// Calculate inital date range
 		var now = new Date();
-		now.setDate(now.getDate() - 1);
+		now.setUTCDate((new Date()).getUTCDate() - 1);
 		var then = new Date();
-		then.setDate(now.getDate() - 29);
+		then.setUTCDate((new Date()).getUTCDate() - 29);
 
 		window.picker = new Litepicker({
 			element: document.getElementById('dateRange'),
