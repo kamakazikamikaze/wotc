@@ -1,6 +1,6 @@
 # coding: utf-8
 from argparse import ArgumentParser, Action
-from asyncio import run, set_event_loop_policy, WindowsSelectorEventLoopPolicy
+from asyncio import run
 from asyncpg import connect
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -188,5 +188,6 @@ if __name__ == '__main__':
         config = load(f)
 
     if system() == 'Windows':
+        from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
         set_event_loop_policy(WindowsSelectorEventLoopPolicy())
     run(export_data(config, args))
